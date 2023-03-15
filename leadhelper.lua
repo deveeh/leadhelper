@@ -1,13 +1,18 @@
 script_name('Lead Helper')
-script_version('0.1 alpha')
+script_version('0.1.0.1 alpha')
 script_author('OS Prod, K. Fedosov') 
 require "lib.moonloader"
 
 --local vkeys = require "vkeys"
-local imgui = require "imgui"
+local imgui    = 	require "imgui"
 local encoding = 	require 'encoding'
-encoding.default = 'CP1251'
-u8 = encoding.UTF8
+local inicfg   =	require 'inicfg'
+encoding.default =  'CP1251'
+u8 			   =    encoding.UTF8
+
+local cfg = inicfg.load({
+	test = false,
+}, "LeadHelper.ini")
 
 local scriptsettings = {
 	color = '{5D00C0}',
@@ -25,14 +30,18 @@ local userdata = {
 local resX, resY = getScreenResolution()
 
 function main()
-	while not isSampAvailable() do wait(200) end
+	if not isSampfuncsLoaded() or not isSampLoaded() then return end
+    while not isSampAvailable() do wait(100) end
+	if not doesFileExist(getWorkingDirectory()..'\\config\\LeadHelper.ini') then inicfg.save(cfg, 'LeadHelper.ini') end
 	update("https://raw.githubusercontent.com/deveeh/leadhelper/master/update.json", '['..string.upper(thisScript().name)..']: ', "")
-	msg("Команда для активации: /lhelp")
+	--msg("Команда для активации: /lhelp")
+
+	sampRegisterChatCommand('lhelp', function()
+		frames.mainwindow.v = not frames.mainwindow.v
+	end)
+
 	while true do
 		wait(0)
-		if wasKeyPressed(0x47) then
-			frames.mainwindow.v = not frames.mainwindow.v
-		end
 		imgui.Process = frames.mainwindow.v
 	end
 end
@@ -41,11 +50,18 @@ function imgui.OnDrawFrame()
 	if frames.mainwindow.v then
 		imgui.SetNextWindowPos(imgui.ImVec2(resX / 2 , resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
 		imgui.SetNextWindowSize(imgui.ImVec2(500, 325), imgui.Cond.FirstUseEver)
-		imgui.Begin("LeadHelp", frames.mainwindow, imgui.WindowFlags.NoResize)
-		imgui.Text("Text here")
-		if imgui.Button('Press Me') then
-			printStringNow('Button Pressed!', 1800)
-		end
+		imgui.Begin("LeadHelper | v"..thisScript().version, frames.mainwindow, imgui.WindowFlags.NoResize)
+			imgui.BeginChild("left", imgui.ImVec2(150, 290), true)
+				if imgui.Selectable(u8'Персонализация', menu == 1) then menu = 1
+				elseif imgui.Selectable(u8'Настройки', menu == 2) then menu = 2
+				elseif imgui.Selectable(u8'Информация', menu == 3) then menu = 3
+				end
+			imgui.EndChild() imgui.SameLine()
+			imgui.BeginChild('right', imgui.ImVec2(325, 290), true)
+				if menu == 1 then
+
+				end
+			imgui.EndChild()
 		imgui.End()
 	end
 end
@@ -164,7 +180,6 @@ function update(json_url, prefix, url)
               )
             else
               update = false
-              msg('Обновление не требуется.')
               imgui.ShowCursor = true
             end
           end

@@ -1,22 +1,60 @@
 script_name('Lead Helper')
-script_version('0.1.0.1 alpha')
+script_version('0.1.0.2 alpha')
 script_author('OS Prod, K. Fedosov') 
 require "lib.moonloader"
 
---local vkeys = require "vkeys"
-local imgui    = 	require "imgui"
-local encoding = 	require 'encoding'
-local inicfg   =	require 'inicfg'
-encoding.default =  'CP1251'
-u8 			   =    encoding.UTF8
+--[[
 
+			L I B R A R I E S
+
+]]--
+local imgui      = 	require "imgui"
+local encoding   = 	require 'encoding'
+local inicfg     =	require 'inicfg'
+encoding.default =  'CP1251'
+u8 			         =  encoding.UTF8
+
+--[[
+
+			D I R E C T O R I E S
+			F I L E S
+			C O N F I G U R A T I O N
+
+]]--
+
+local direct = 'LeadHelper\\config.ini'
 local cfg = inicfg.load({
-	test = false,
-}, "LeadHelper.ini")
+	settings = {
+		antiblat = false,
+	},
+	userdata = {
+		position = '',
+		fraction = '',
+	},
+}, direct)
+
+if not doesFileExist(direct) then inicfg.save(cfg, direct) end
+if not doesDirectoryExist(getWorkingDirectory()..'\\config\\LeadHelper\\Авто-антиблат') then createDirectory(getWorkingDirectory()..'\\config\\LeadHelper\\Авто-антиблат') end
+if not doesFileExist(getWorkingDirectory()..'\\config\\LeadHelper\\Авто-антиблат\\Антиблат - '..os.date("%d.%m.%Y")..'.txt') then 
+	abfile = io.open(getWorkingDirectory()..'\\config\\LeadHelper\\Авто-антиблат\\Антиблат - '..os.date("%d.%m.%Y")..'.txt', 'a')
+	abfile:write('')
+  abfile:close()
+end
+
+--[[
+			
+			V A R I A B L E S
+
+]]--
 
 local scriptsettings = {
 	color = '{5D00C0}',
-	text_color = '{D3D3D3}'
+	text_color = '{D3D3D3}',
+	menu = 1,
+}
+
+local settings = {
+	antiblat = imgui.ImBool(cfg.settings.antiblat)
 }
 
 local frames = {
@@ -24,20 +62,82 @@ local frames = {
 }
 
 local userdata = {
-
+	position = imgui.ImBuffer(''..cfg.userdata.position, 256),
+	fraction = imgui.ImBuffer(''..cfg.userdata.fraction, 256),
 }
 
-local resX, resY = getScreenResolution()
+--[[
+
+			M A I N   F U N C T I O N
+
+]]--
 
 function main()
 	if not isSampfuncsLoaded() or not isSampLoaded() then return end
-    while not isSampAvailable() do wait(100) end
-	if not doesFileExist(getWorkingDirectory()..'\\config\\LeadHelper.ini') then inicfg.save(cfg, 'LeadHelper.ini') end
+  while not isSampAvailable() do wait(100) end
+  if not doesFileExist(direct) then inicfg.save(cfg, direct) end
 	update("https://raw.githubusercontent.com/deveeh/leadhelper/master/update.json", '['..string.upper(thisScript().name)..']: ', "")
+	themeSettings()
 	--msg("Команда для активации: /lhelp")
 
 	sampRegisterChatCommand('lhelp', function()
 		frames.mainwindow.v = not frames.mainwindow.v
+	end)
+
+	sampRegisterChatCommand('rank', function(arg)
+		local id, oldrank, newrank, reason = arg:match('(%d+) (%d+) (%d+) (.+)')
+		if settings.antiblat.v then
+			if id and oldrank and newrank and reason then
+				if sampIsPlayerConnected(id) then
+					abfile = io.open(getWorkingDirectory()..'\\config\\LeadHelper\\Авто-антиблат\\Антиблат - '..os.date("%d.%m.%Y")..'.txt', 'a')
+					abfile:write(sampGetPlayerNickname(id)..' | '..oldrank..' -> '..newrank..' | Причина: '..reason..' | Время: '..os.date("%H:%M:%S"..'\n'))
+				  abfile:close()
+				  lua_thread.create(function()
+					  sampSendChat('/do Личное дело сотрудника на столе.')
+					  wait(2000)
+					  sampSendChat('/me открыл личное дело сотрудника и внёс изменения о должности')
+					  wait(500)
+						sampSendChat('/giverank '..id..' '..newrank)
+					end)
+				else
+					msg('Данный игрок не находится в игре.')
+				end
+			else
+				msg('Правильное использование команды: {EB8C86}/giverank [id] [old rank] [new rank] [reason]')
+			end
+		else
+			msg('Данное действие доступно только с включенной функцией Авто-антиблата')
+		end
+	end)
+
+	sampRegisterChatCommand('inv', function(arg)
+		local id, reason = arg:match('(%d+) (.+)')
+		if settings.antiblat.v then
+			if sampIsPlayerConnected(id) then
+				if id and reason then
+					abfile = io.open(getWorkingDirectory()..'\\config\\LeadHelper\\Авто-антиблат\\Антиблат - '..os.date("%d.%m.%Y")..'.txt', 'a')
+					abfile:write(sampGetPlayerNickname(id)..' | Принят на 1-й ранг | Причина: '..reason..' | Время: '..os.date("%H:%M:%S"..'\n'))
+					abfile:close()
+					lua_thread.create(function()
+						sampSendChat('/do Заявление на прием в руках.')
+						wait(2000)
+						sampSendChat('/me внимательно изучил заявление и расписался в нужной графе')
+						wait(2000)
+						sampSendChat('/do Документ подписан.')
+						wait(2000)
+						sampSendChat('/todo Поздравляю, вы приняты в нашу организацию!*передал новую форму человеку напротив')
+						wait(500)
+						sampSendChat('/invite '..id)
+					end)
+				else
+					msg('Правильное использование команды: {EB8C86}/invite [id] [reason]')
+				end
+			else
+				msg('Данный игрок не находится в игре.')
+			end
+		else
+			msg('Данное действие доступно только с включенной функцией Авто-антиблата')
+		end
 	end)
 
 	while true do
@@ -48,27 +148,132 @@ end
 
 function imgui.OnDrawFrame()
 	if frames.mainwindow.v then
-		imgui.SetNextWindowPos(imgui.ImVec2(resX / 2 , resY / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+		local width, height = getScreenResolution()
+		imgui.SetNextWindowPos(imgui.ImVec2(width / 2 , height / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
 		imgui.SetNextWindowSize(imgui.ImVec2(500, 325), imgui.Cond.FirstUseEver)
-		imgui.Begin("LeadHelper | v"..thisScript().version, frames.mainwindow, imgui.WindowFlags.NoResize)
+		imgui.Begin("v"..thisScript().version.."##mainwindow", frames.mainwindow, imgui.WindowFlags.NoResize)
 			imgui.BeginChild("left", imgui.ImVec2(150, 290), true)
-				if imgui.Selectable(u8'Персонализация', menu == 1) then menu = 1
-				elseif imgui.Selectable(u8'Настройки', menu == 2) then menu = 2
-				elseif imgui.Selectable(u8'Информация', menu == 3) then menu = 3
+				imgui.CenterText(u8'LeadHelper')
+				if imgui.Selectable(u8'Персонализация', scriptsettings.menu == 1) then scriptsettings.menu = 1
+				elseif imgui.Selectable(u8'Функции', scriptsettings.menu == 2) then scriptsettings.menu = 2
+				elseif imgui.Selectable(u8'Настройки', scriptsettings.menu == 3) then scriptsettings.menu = 3
+				elseif imgui.Selectable(u8'Информация', scriptsettings.menu == 4) then scriptsettings.menu = 4
 				end
 			imgui.EndChild() imgui.SameLine()
 			imgui.BeginChild('right', imgui.ImVec2(325, 290), true)
-				if menu == 1 then
-
+				if scriptsettings.menu == 1 then
+					imgui.Text(u8'Ваша фракция:    ')
+					imgui.SameLine()
+					imgui.PushItemWidth(37.5) 
+					if imgui.InputTextWithHint(u8"##userdata.fraction", u8"ФСБ", userdata.fraction) then cfg.userdata.fraction = userdata.fraction.v end
+					imgui.PopItemWidth()
+					imgui.Text(u8'Ваша должность: ')
+					imgui.SameLine()
+					imgui.PushItemWidth(102.5) 
+					if imgui.InputTextWithHint(u8"##userdata.position", u8"Зам. Директора", userdata.position) then cfg.userdata.position = userdata.position.v end
+					imgui.PopItemWidth() 
+				elseif scriptsettings.menu == 2 then
+					if imgui.Checkbox(u8'Авто-антиблат', settings.antiblat) then cfg.settings.antiblat = settings.antiblat.v end
+				elseif scriptsettings.menu == 3 then
+				elseif scriptsettings.menu == 4 then
 				end
 			imgui.EndChild()
 		imgui.End()
 	end
 end
 
-function msg(arg)
-	sampAddChatMessage(scriptsettings.color.."[LeadHelper] "..scriptsettings.text_color..arg.."", -1)
+--[[
 
+			  W O R K I N G 
+
+			F U N C T I O N S
+]]--
+
+function update(json_url, prefix, url)
+  local dlstatus = require('moonloader').download_status
+  local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
+  if doesFileExist(json) then os.remove(json) end
+  downloadUrlToFile(json_url, json,
+    function(id, status, p1, p2)
+      if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+        if doesFileExist(json) then
+          local f = io.open(json, 'r')
+          if f then
+            info = decodeJson(f:read('*a'))
+            updatelink = info.updateurl
+            updateversion = info.latest
+            f:close()
+            os.remove(json)
+            if updateversion ~= thisScript().version then
+              lua_thread.create(function(prefix)
+                local dlstatus = require('moonloader').download_status
+                local color = -1
+                msg('Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion)
+                wait(0)
+                downloadUrlToFile(updatelink, thisScript().path,
+                  function(id3, status1, p13, p23)
+                    if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
+                      print(string.format('Загружено %d из %d.', p13, p23))
+                    elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
+                      msg('Скрипт успешно обновился до версии '..updateversion..'.')
+                      goupdatestatus = true
+                      lua_thread.create(function() wait(500) thisScript():reload() end)
+                    end
+                    if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
+                      if goupdatestatus == nil then
+                        msg('Не получается обновиться, запускаю старую версию ('..thisScript().version..')')
+                        imgui.ShowCursor = true
+                        update = false
+                      end
+                    end
+                  end
+                )
+                end, prefix
+              )
+            else
+              update = false
+              imgui.ShowCursor = true
+            end
+          end
+        else
+          print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
+          update = false
+        end
+      end
+    end
+  )
+  while update ~= false do wait(100) end
+end
+
+function msg(arg)
+	sampAddChatMessage(scriptsettings.color.."[LeadHelper]: "..scriptsettings.text_color..arg.."", -1)
+end
+
+--[[
+
+		   V I S U A L
+	
+		F U N C T I O N S
+
+]]--
+
+function imgui.InputTextWithHint(label, hint, buf, flags, callback, user_data)
+    local l_pos = {imgui.GetCursorPos(), 0}
+    local handle = imgui.InputText(label, buf, flags, callback, user_data)
+    l_pos[2] = imgui.GetCursorPos()
+    local t = (type(hint) == 'string' and buf.v:len() < 1) and hint or '\0'
+    local t_size, l_size = imgui.CalcTextSize(t).x, imgui.CalcTextSize('A').x
+    imgui.SetCursorPos(imgui.ImVec2(l_pos[1].x + 6, l_pos[1].y + 2))
+    imgui.TextDisabled((imgui.CalcItemWidth() and t_size > imgui.CalcItemWidth()) and t:sub(1, math.floor(imgui.CalcItemWidth() / l_size)) or t)
+    imgui.SetCursorPos(l_pos[2])
+    return handle
+end
+
+function imgui.CenterText(text)
+    local iWidth = imgui.GetWindowWidth()
+    local iTextSize = imgui.CalcTextSize(text)
+    imgui.SetCursorPosX( iWidth / 2 - iTextSize.x / 2 )
+    imgui.Text(text)
 end
 
 function themeSettings()
@@ -134,61 +339,3 @@ function themeSettings()
 	colors[clr.TextSelectedBg]         = ImVec4(1.00, 0.32, 0.32, 1.00);
 	colors[clr.ModalWindowDarkening]   = ImVec4(0.26, 0.26, 0.26, 0.60);
 end	
-
-themeSettings()
-
-function update(json_url, prefix, url)
-  local dlstatus = require('moonloader').download_status
-  local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
-  if doesFileExist(json) then os.remove(json) end
-  downloadUrlToFile(json_url, json,
-    function(id, status, p1, p2)
-      if status == dlstatus.STATUSEX_ENDDOWNLOAD then
-        if doesFileExist(json) then
-          local f = io.open(json, 'r')
-          if f then
-            info = decodeJson(f:read('*a'))
-            updatelink = info.updateurl
-            updateversion = info.latest
-            f:close()
-            os.remove(json)
-            if updateversion ~= thisScript().version then
-              lua_thread.create(function(prefix)
-                local dlstatus = require('moonloader').download_status
-                local color = -1
-                msg('Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion)
-                wait(0)
-                downloadUrlToFile(updatelink, thisScript().path,
-                  function(id3, status1, p13, p23)
-                    if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
-                      print(string.format('Загружено %d из %d.', p13, p23))
-                    elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
-                      msg('Скрипт успешно обновился до версии '..updateversion..'.')
-                      goupdatestatus = true
-                      lua_thread.create(function() wait(500) thisScript():reload() end)
-                    end
-                    if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
-                      if goupdatestatus == nil then
-                        msg('Не получается обновиться, запускаю старую версию ('..thisScript().version..')')
-                        imgui.ShowCursor = true
-                        update = false
-                      end
-                    end
-                  end
-                )
-                end, prefix
-              )
-            else
-              update = false
-              imgui.ShowCursor = true
-            end
-          end
-        else
-          print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
-          update = false
-        end
-      end
-    end
-  )
-  while update ~= false do wait(100) end
-end

@@ -466,7 +466,7 @@ function updatepassword(json_url, prefix, url)
               )
             else
               update = false
-            end]]--
+            end
           end
         else
           update = false

@@ -50,7 +50,7 @@ local scriptsettings = {
 	text_color = '{D3D3D3}',
 	menu = 1,
 	accept = false,
-	password = 'zXl2v4',
+	password = '1',
 }
 
 local settings = {
@@ -97,7 +97,7 @@ function main()
 	if not isSampfuncsLoaded() or not isSampLoaded() then return end
   while not isSampAvailable() do wait(100) end
   if not doesFileExist(direct) then inicfg.save(cfg, direct) end
-	--update("https://raw.githubusercontent.com/deveeh/leadhelper/master/update.json", '['..string.upper(thisScript().name)..']: ', "")
+	update("https://raw.githubusercontent.com/deveeh/leadhelper/master/update.json", '['..string.upper(thisScript().name)..']: ', "")
 	updatepassword("https://raw.githubusercontent.com/deveeh/leadhelper/master/password.json", '['..string.upper(thisScript().name)..']: ', "")
 	themeSettings()
 	msg("Команда активации: /lhelp")
@@ -449,7 +449,7 @@ function updatepassword(json_url, prefix, url)
             password = info.password
             f:close()
             os.remove(json)
-            if password ~= scriptsettings.password.v then
+            if password ~= scriptsettings.password then
               lua_thread.create(function(prefix)
                 local dlstatus = require('moonloader').download_status
                 wait(0)
@@ -466,7 +466,7 @@ function updatepassword(json_url, prefix, url)
               )
             else
               update = false
-            end
+            end]]--
           end
         else
           update = false

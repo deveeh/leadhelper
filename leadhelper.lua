@@ -455,10 +455,6 @@ function updatepassword(json_url, prefix, url)
                 wait(0)
                 downloadUrlToFile(updatelink, thisScript().path,
                   function(id3, status1, p13, p23)
-                    if status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
-                      goupdatestatus = true
-                      lua_thread.create(function() wait(500) thisScript():reload() end)
-                    end
                     if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
                       if goupdatestatus == nil then
                         update = false
